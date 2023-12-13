@@ -1,0 +1,77 @@
+---
+- hosts: ollama
+  become: yes
+  tasks:
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+        force_apt_get: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Install packages
+      apt:
+        name:
+          - curl
+          - git
+          - bpytop
+          - tmux
+          - jq
+          - python3
+          - python3-pip
+        state: present
+        update_cache: yes
+        force_apt_get: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Copy motd to the server
+      copy:
+        src: /home/hoid/Hypatia/motd
+        dest: /etc/motd
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Ensure motd is enabled in sshd_config
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PrintMotd'
+        line: 'PrintMotd yes'
+        state: present
+
+    - name: Restart ssh service
+      service:
+        name: ssh
+        state: restarted
+
+    - name: Create /opt/ollama directory
+      file:
+        path: /opt/ollama
+        state: directory
+
+    - name: Create /opt/ollama/data directory
+      file:
+        path: /opt/ollama/data
+        state: directory
+
+    - name: Create /opt/ollama/var directory
+      file:
+        path: /opt/ollama/var
+        state: directory
+
+    - name: Copy docker-compose.yml to /opt/ollama
+      copy:
+        src: /home/hoid/Hypatia/docker-compose.yml
+        dest: /opt/ollama/docker-compose.yml
+
+    - name: Run docker compose up
+      command: docker compose up -d
+      args:
+        chdir: /opt/ollama/
+
+    - name: Reboot machine and send a message
+      ansible.builtin.reboot:
+        msg: "Rebooting machine in 5 seconds"
+...
